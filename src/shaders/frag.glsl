@@ -16,200 +16,375 @@ layout (location = 0) in vec2 iUV;
 layout (location = 0) out vec4 oColor;
 
 /*************************************************************************
-* Constants
+* Constants/Globals
 *************************************************************************/
 
+#define ONE_OVER_PI 0.318310
+#define PI_OVER_TWO 1.570796
+#define PI 3.14159
 #define TAU 6.283185
+
 #define EPSILON 0.00001
+
+#define V_FOWARD vec3(1.,0.,0.)
+#define V_UP vec3(0.,1.,0.)
+
+#define DISTMARCH_STEPS 60
+#define DISTMARCH_MAXDIST 50.
+
+//Globals
+vec3  g_camPointAt = vec3(0.);
+vec3  g_camOrigin = vec3(0.);
+vec3  g_ldir = vec3(-.4, 1., -.3);
+
+//Camera Data
+struct CameraData
+{
+  vec3 origin;
+  vec3 dir;
+  vec2 st;
+};
+
+struct SurfaceData
+{
+  vec3 point;
+  vec3 normal;
+  vec3 basecolor;
+  float roughness;
+  float metallic;
+};
 
 /*************************************************************************
 * Utilities
 *************************************************************************/
 
-//
-// Description : Array and textureless GLSL 2D/3D/4D simplex 
-//               noise functions.
-//      Author : Ian McEwan, Ashima Arts.
-//  Maintainer : stegu
-//     Lastmod : 20110822 (ijm)
-//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
-//               Distributed under the MIT License. See LICENSE file.
-//               https://github.com/ashima/webgl-noise
-//               https://github.com/stegu/webgl-noise
-// 
-
-vec3 mod289(vec3 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 mod289(vec4 x) {
-  return x - floor(x * (1.0 / 289.0)) * 289.0;
-}
-
-vec4 permute(vec4 x) {
-     return mod289(((x*34.0)+1.0)*x);
-}
-
-vec4 taylorInvSqrt(vec4 r)
+vec2 opU(vec2 a, vec2 b)
 {
-  return 1.79284291400159 - 0.85373472095314 * r;
+	if (a.x < b.x) return a;
+	else return b;
 }
 
-float snoise(vec3 v)
-  { 
-  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+float opS(float d1, float d2)
+{
+	return max(-d2, d1);
+}
 
-// First corner
-  vec3 i  = floor(v + dot(v, C.yyy) );
-  vec3 x0 =   v - i + dot(i, C.xxx) ;
+/*************************************************************************
+* Camera
+*************************************************************************/
 
-// Other corners
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min( g.xyz, l.zxy );
-  vec3 i2 = max( g.xyz, l.zxy );
+CameraData setupCamera(vec2 st)
+{
+  // calculate the ray origin and ray direction that represents
+  // mapping the image plane towards the scene
+  vec3 iu = vec3(0., 1., 0.);
 
-  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
-  //   x1 = x0 - i1  + 1.0 * C.xxx;
-  //   x2 = x0 - i2  + 2.0 * C.xxx;
-  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
-  vec3 x1 = x0 - i1 + C.xxx;
-  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
-  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+  vec3 iz = normalize(g_camPointAt - g_camOrigin);
+  vec3 ix = normalize(cross(iz, iu));
+  vec3 iy = cross(ix, iz);
+  float fov = .67;
 
-// Permutations
-  i = mod289(i); 
-  vec4 p = permute( permute( permute( 
-             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+  vec3 dir = normalize(st.x*ix + st.y*iy + fov * iz);
 
-// Gradients: 7x7 points over a square, mapped onto an octahedron.
-// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-  float n_ = 0.142857142857; // 1.0/7.0
-  vec3  ns = n_ * D.wyz - D.xzx;
+  return CameraData(g_camOrigin, dir, st);
 
-  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+}
 
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+void animateCamera()
+{
+	//Camera
+	g_camOrigin = vec3(0., 1.68, 0.); //1.68
 
-  vec4 x = x_ *ns.x + ns.yyyy;
-  vec4 y = y_ *ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
+	vec2 click = uniforms.mouse.xy / uniforms.resolution.xx;
+	click = vec2(0.7, 0.25) * click + vec2(0., -0.05);
 
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
+	float yaw = PI_OVER_TWO * (click.x);
+	float pitch = PI_OVER_TWO * ((uniforms.resolution.x / uniforms.resolution.y) * click.y);
 
-  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
-  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
-  vec4 s0 = floor(b0)*2.0 + 1.0;
-  vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
+	g_camPointAt = g_camOrigin + vec3(cos(yaw), tan(pitch)*cos(yaw), sin(yaw));
+}
 
-  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+/*************************************************************************
+* Rendering
+*************************************************************************/
 
-  vec3 p0 = vec3(a0.xy,h.x);
-  vec3 p1 = vec3(a0.zw,h.y);
-  vec3 p2 = vec3(a1.xy,h.z);
-  vec3 p3 = vec3(a1.zw,h.w);
+//Just like a camera has an origin and point it's looking at.
+vec2 distmarch( vec3 rayOrigin, vec3 rayDestination, float maxd )
+{
+  //Camera Near
+  //Step Size
+  float dist = 10. * EPSILON;
+  //Steps
+  float t = 0.;
+  //Materials behave like Color ID Maps, a range of values is a material.
+  float material = 0.;
 
-//Normalise gradients
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
+  //March
+  for (int i = 0; i < DISTMARCH_STEPS; i++)
+  {
+    // Near/Far Planes
+    if ( abs(dist) < EPSILON || t > maxd ) break;
 
-// Mix final noise value
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
-                                dot(p2,x2), dot(p3,x3) ) );
+    // advance the distance of the last lookup
+    t += dist;
+    vec2 dfresult = scenedf( rayOrigin + t * rayDestination );
+    dist = dfresult.x;
+    material = dfresult.y;
   }
 
-vec3 colorDodge(vec3 inColor, vec3 blend)
-{
-    return vec3(inColor / (1.0 - blend));
+  //Camera Far
+  if( t > maxd ) material = -1.0;
+
+  //So we return the ray's collision and the material on that collision.
+  return vec2( t, material );
 }
 
-vec3 colorOverlay(vec3 inColor, vec3 blend)
+// SHADOWING & NORMALS
+
+#define SOFTSHADOW_STEPS 40
+#define SOFTSHADOW_STEPSIZE .1
+
+float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k)
 {
-    vec3 outColor = vec3(0.);
+	float shadow = 1.0;
+	float t = mint;
 
-    if (inColor.r > 0.5)
-    {
-        outColor.r = (1.0 - (1.0 - 2.0 * (inColor.r - 0.5)) * (1.0 - blend.r));
-    }
-    else
-    {   
-        outColor.r = ((2.0 * inColor.r) * blend.r);
-    }
+	for (int i = 0; i < SOFTSHADOW_STEPS; i++)
+	{
+		if (t < maxt)
+		{
+			float h = scenedf(ro + rd * t).x;
+			shadow = min(shadow, k * h / t);
+			t += SOFTSHADOW_STEPSIZE;
+		}
+	}
+	return clamp(shadow, 0.0, 1.0);
 
-    if (inColor.g > 0.5)
-    {
-        outColor.g = (1.0 - (1.0 - 2.0 * (inColor.g - 0.5)) * (1.0 - blend.g));
-    }
-    else
-    {   
-        outColor.g = ((2.0 * inColor.g) * blend.g);
-    }
-
-    if (inColor.b > 0.5)
-    {
-        outColor.b = (1.0 - (1.0 - 2.0 * (inColor.b - 0.5)) * (1.0 - blend.b));
-    }
-    else
-    {   
-        outColor.b = ((2.0 * inColor.b) * blend.b);
-    }
-
-    return outColor;
 }
 
-float saturate(float i)
+#define AO_NUMSAMPLES 6
+#define AO_STEPSIZE .1
+#define AO_STEPSCALE .4
+
+float calcAO(vec3 p, vec3 n)
 {
-    return clamp(i, 0., 1.);
+	float ao = 0.0;
+	float aoscale = 1.0;
+
+	for (int aoi = 0; aoi < AO_NUMSAMPLES; aoi++)
+	{
+		float stepp = 0.01 + AO_STEPSIZE * float(aoi);
+		vec3 aop = n * stepp + p;
+
+		float d = scenedf(aop).x;
+		ao += -(d - stepp)*aoscale;
+		aoscale *= AO_STEPSCALE;
+	}
+
+	return clamp(ao, 0.0, 1.0);
+}
+
+// SHADING
+
+#define INITSURF(p, n) SurfaceData(p, n, vec3(0.), 0., 0.)
+
+vec3 calcNormal(vec3 p)
+{
+	vec3 epsilon = vec3(0.001, 0.0, 0.0);
+	vec3 n = vec3(
+		scenedf(p + epsilon.xyy).x - scenedf(p - epsilon.xyy).x,
+		scenedf(p + epsilon.yxy).x - scenedf(p - epsilon.yxy).x,
+		scenedf(p + epsilon.yyx).x - scenedf(p - epsilon.yyx).x);
+	return normalize(n);
+}
+
+void material(float surfid, inout SurfaceData surf)
+{
+	if (surfid - .5 < MAT_GUNWHITE)
+	{
+		surf.basecolor = vec3(.94);
+		surf.roughness = .85;
+		surf.metallic = .4;
+	}
+	else if (surfid - .5 < MAT_GUNGRAY)
+	{
+		surf.basecolor = vec3(0.1);
+		surf.roughness = 6.;
+		surf.metallic = .3;
+	}
+	else if (surfid - .5 < MAT_GUNBLACK)
+	{
+		surf.basecolor = vec3(.05);
+		surf.roughness = .6;
+		surf.metallic = .4;
+	}
+	else if (surfid - .5 < MAT_FUNNEL)
+	{
+		surf.basecolor = -vec3(.1, .3, .9);
+		surf.roughness = 1.;
+		surf.metallic = 0.;
+	}
+	else if (surfid - .5 < MAT_CHAMBER)
+	{
+		surf.basecolor = vec3(6.5);
+		surf.roughness = 0.89;
+		surf.metallic = 0.2;
+	}
+}
+
+vec3 integrateDirLight(vec3 ldir, vec3 lcolor, SurfaceData surf)
+{
+	vec3 vdir = normalize(g_camOrigin - surf.point);
+	vec3 hdir = normalize(ldir + vdir);
+
+	float costh = max(-SMALL_FLOAT, dot(surf.normal, hdir));
+	float costd = max(-SMALL_FLOAT, dot(ldir, hdir));
+	float costl = max(-SMALL_FLOAT, dot(surf.normal, ldir));
+	float costv = max(-SMALL_FLOAT, dot(surf.normal, vdir));
+
+	float ndl = clamp(costl, 0., 1.);
+
+	vec3 cout = vec3(0.);
+
+	if (ndl > 0.)
+	{
+		float frk = .5 + 2.* costd*costd * surf.roughness;
+		vec3 diff = surf.basecolor * ONE_OVER_PI * (1. + (frk - 1.)*pow5(1. - costl)) * (1. + (frk - 1.) * pow5(1. - costv));
+
+		float r = max(0.05, surf.roughness);
+		float alpha = r * r;
+		float denom = costh*costh * (alpha*alpha - 1.) + 1.;
+		float D = (alpha*alpha) / (PI * denom*denom);
+
+		float k = ((r + 1.) * (r + 1.)) / 8.;
+		float Gl = costv / (costv * (1. - k) + k);
+		float Gv = costl / (costl * (1. - k) + k);
+		float G = Gl * Gv;
+
+		vec3 F0 = mix(vec3(.5), surf.basecolor, surf.metallic);
+		vec3 F = F0 + (1. - F0) * pow5(1. - costd);
+
+		vec3 spec = D * F * G / (4. * costl * costv);
+		float shd = 1.0;
+		calcSoftShadow(surf.point, ldir, 0.1, 20., 5.);
+
+		cout += diff * ndl * shd * lcolor;
+		cout += spec * ndl * shd * lcolor;
+		//Rim Light
+		//cout += clamp(pow(dot(vdir, -surf.normal) + 1.5, 3.5) * 0.05, 0.0, 1.0);
+	}
+
+	return cout;
+}
+
+vec3 sampleEnvLight(vec3 ldir, vec3 lcolor, SurfaceData surf)
+{
+
+	vec3 vdir = normalize(g_camOrigin - surf.point);
+	vec3 hdir = normalize(ldir + vdir);
+	float costh = dot(surf.normal, hdir);
+	float costd = dot(ldir, hdir);
+	float costl = dot(surf.normal, ldir);
+	float costv = dot(surf.normal, vdir);
+
+	float ndl = clamp(costl, 0., 1.);
+	vec3 cout = vec3(0.);
+	if (ndl > 0.)
+	{
+		float r = surf.roughness;
+		float k = r*r / 2.;
+		float Gl = costv / (costv * (1. - k) + k);
+		float Gv = costl / (costl * (1. - k) + k);
+		float G = Gl * Gv;
+
+		vec3 F0 = mix(vec3(.5), surf.basecolor, surf.metallic);
+		vec3 F = F0 + (1. - F0) * pow5(1. - costd);
+		vec3 spec = lcolor * G * F * costd / (costh * costv);
+		float shd = calcSoftShadow(surf.point, ldir, 0.02, 20., 7.);
+		cout = spec * shd * lcolor;
+	}
+
+	return cout;
+}
+
+vec3 integrateEnvLight(SurfaceData surf)
+{
+	vec3 vdir = normalize(surf.point - g_camOrigin);
+	vec3 envdir = reflect(vdir, surf.normal);
+	vec4 specolor = vec4(.4) * mix(texture(iChannel0, envdir), texture(iChannel1, envdir), surf.roughness);
+
+	vec3 envspec = sampleEnvLight(envdir, specolor.rgb, surf);
+	return envspec;
+}
+
+vec3 shadeSurface(SurfaceData surf)
+{
+
+	vec3 amb = surf.basecolor * .01;
+	float ao = calcAO(surf.point, surf.normal);
+
+	vec3 centerldir = normalize(-surf.point);
+
+	vec3 cout = vec3(0.);
+	if (dot(surf.basecolor, vec3(-1.)) > SMALL_FLOAT) //Excursion Funnel
+	{
+		cout = -surf.basecolor * surf.point.x;// + (0.2 * surf.normal);
+
+	}
+	else
+		if (dot(surf.basecolor, vec3(1.)) > SMALL_FLOAT)
+		{
+			vec3  dir1 = normalize(vec3(0.0, 0.9, 0.1));
+			vec3  col1 = vec3(0.3, 0.5, .9);
+			vec3  dir2 = normalize(vec3(0.1, -.1, 0.));
+			vec3  col2 = vec3(0.94, 0.5, 0.2);
+			cout += integrateDirLight(dir1, col1, surf);
+			cout += integrateDirLight(dir2, .0*col2, surf);
+			cout += integrateDirLight(g_ldir, vec3(0.4), surf);
+			cout += integrateEnvLight(surf);
+			cout *= (1. - (3.5 * ao));
+		}
+	return cout;
+
 }
 
 /*************************************************************************
 * Distance Functions
 *************************************************************************/
 
-float distSin(vec2 p, float time, vec4 column)
+float sdPlane(vec3 p)
 {
-    float f, df, d, weight, zoom;
-    zoom = 1.;
-    f = sin(p.y + time );
-    df = (f - sin(p.y + time + EPSILON )) / EPSILON;
-    weight = 1. * (
-      (1.8 - smoothstep(0.0, .98 * column[0], abs(-5.5 - p.y)))
-     * (1.8 - smoothstep(0.0, .98 * column[1], abs(-2. -  p.y)))
-     * (1.8 - smoothstep(0.0, .98 * column[2], 1. - abs(2. - p.y)))
-     * (1.8 - smoothstep(0.0, .98 * column[3], 1. - abs(5.5 - p.y)))
-    );
-
-    d = (abs(p.x * weight) - f) / sqrt(.05 + df * df);
-
-    if (p.x < 0.)
-        d = (abs(p.x * weight) + f) / sqrt(.05 + df * df);
-
-     return 1.0 - smoothstep(.0, .1, d);
+	return p.y;
 }
 
-vec3 chromaSin(vec2 p, float time, vec4 column) {
-
-    // Output
-    vec3 col = vec3(0.);
-    time *= .3;
-
-    col += vec3(distSin(p, time + (TAU / 4), column), 0., 0.);
-    col += vec3(0., distSin(vec2(1.1, 1.) * p + vec2(.1, 0.), 1.1 * -time + (2 * TAU / 4), column), 0.);
-    col += vec3(0., 0., distSin(vec2(1.2, 1.) * p + vec2(.3, 0.), 1.5 * time + (3 * TAU / 4), column));
-    return col;
+float sdPlaneZ(vec3 p)
+{
+	return p.z;
 }
+
+float sdRoundBox(vec3 p, vec3 b, float r)
+{
+	return length(max(abs(p) - b, 0.0)) - r;
+}
+
+float sdBox(vec3 p, vec3 b)
+{
+	vec3 d = abs(p) - b;
+	return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
+}
+
+float sdCylinder(vec3 p, vec2 h)
+{
+	vec2 d = abs(vec2(length(p.xz), p.y)) - h;
+	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+vec2 scenedf(vec3 p)
+{
+    vec2 obj = vec2(sdPGunBlaster(gp), MAT_GUNGRAY);
+    return obj;
+}
+
 /*************************************************************************
 * Main
 *************************************************************************/
@@ -223,8 +398,14 @@ void main()
     vec2 uvc = (uv - vec2(.5));
     float time = uniforms.time * 4.;
 
-    // Noise Back
-    col += mix(vec3(.157, .153, .169), abs(snoise(vec3(3. * uv, time * .1)) * vec3(.1, .12, .15)), 0.5);
+    // Setup Camera
+    CameraData cam = setupCamera(uvc);
+
+    //Animate Camera
+    animateCamera();
+
+    // Scene Marching
+    vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
 
     // Mouse Cursor
     vec2 mouse = (((uniforms.mouse.xy / uniforms.resolution) - vec2(.5)) * aspectRatio) + vec2(.5);
