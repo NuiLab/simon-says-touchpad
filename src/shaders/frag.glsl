@@ -32,6 +32,12 @@ layout (location = 0) out vec4 oColor;
 #define DISTMARCH_STEPS 60
 #define DISTMARCH_MAXDIST 50.
 
+#define MAT_GUNWHITE 1.
+#define MAT_GUNGRAY  2.
+#define MAT_GUNBLACK 3.
+#define MAT_FUNNEL   4.
+#define MAT_CHAMBER  5.
+
 //Globals
 vec3  g_camPointAt = vec3(0.);
 vec3  g_camOrigin = vec3(0.);
@@ -326,7 +332,7 @@ vec3 shadeSurface(SurfaceData surf)
 	vec3 centerldir = normalize(-surf.point);
 
 	vec3 cout = vec3(0.);
-	if (dot(surf.basecolor, vec3(-1.)) > SMALL_FLOAT) //Excursion Funnel
+	if (dot(surf.basecolor, vec3(-1.)) > SMALL_FLOAT)
 	{
 		cout = -surf.basecolor * surf.point.x;// + (0.2 * surf.normal);
 
@@ -398,6 +404,11 @@ void main()
     vec2 uvc = (uv - vec2(.5));
     float time = uniforms.time * 4.;
 
+    // Mouse Cursor
+    vec2 mouse = (((uniforms.mouse.xy / uniforms.resolution) - vec2(.5)) * aspectRatio) + vec2(.5);
+    float cursor = (1. - saturate(dot((uv - mouse) * 16., (uv - mouse) * 16.))) * (.5 * uniforms.mouse.z);
+    col += vec3(cursor * .2);
+
     // Setup Camera
     CameraData cam = setupCamera(uvc);
 
@@ -407,10 +418,7 @@ void main()
     // Scene Marching
     vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
 
-    // Mouse Cursor
-    vec2 mouse = (((uniforms.mouse.xy / uniforms.resolution) - vec2(.5)) * aspectRatio) + vec2(.5);
-    float cursor = (1. - saturate(dot((uv - mouse) * 16., (uv - mouse) * 16.))) * (.5 * uniforms.mouse.z);
-    col += vec3(cursor * .2);
+
 
     // Vignette
     col = mix(col, vec3(.157, .153, .169), dot(uvc * 2.5, uvc * 2.5));
