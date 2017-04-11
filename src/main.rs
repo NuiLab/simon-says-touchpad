@@ -24,10 +24,10 @@ fn main() {
         let mut buf = vec![0u8; 4];
 
         loop {
-
-            println!("{} {} {} {} ", buf[0], buf[1], buf[2], buf[3]);
-            //sleep(Duration::from_millis(16));
             pa.read(&mut buf[..]);
+            println!("{} {} {} {} ", buf[0], buf[1], buf[2], buf[3]);
+            sleep(Duration::from_millis(16));
+            //for num in &mut buf { *num = 0 }
         }
 
 /*
