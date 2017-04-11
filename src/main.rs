@@ -1,35 +1,20 @@
-extern crate serial;
-extern crate glium;
-
 mod afi;
+mod graphics;
 
 use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
-use glium::DisplayBuild;
 
 fn main() {
+    let mut port = afi::create_port();
+    let mut buf = vec![0u8; 4];
 
-    // OS Window
-    /*
-    let window = glium::glutin::WindowBuilder::new()
-        .with_fullscreen(glium::glutin::get_primary_monitor())
-        .build_glium()
-        .unwrap();
-    */
-
-        let (mut pa, mut pb) = afi::create_port();
-
-        let mut buf = vec![0u8; 4];
-
-        loop {
-            pa.read(&mut buf[..]);
-            println!("{} {} {} {} ", buf[0], buf[1], buf[2], buf[3]);
-            sleep(Duration::from_millis(16));
-            //for num in &mut buf { *num = 0 }
-        }
-
+    loop {
+      afi::read(&mut port, &mut buf);
+      println!("{} {} {} {} ", buf[0], buf[1], buf[2], buf[3]);
+      sleep(Duration::from_millis(16));
+    }
 /*
     loop {
 

@@ -6,3 +6,4 @@ authors = ["Alain Galvan <hi@alain.xyz>"]
 [dependencies]
 serial = "0.3.4"
 glium = "0.16.0"
+json = "0.11.6"
