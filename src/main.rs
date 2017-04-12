@@ -7,8 +7,6 @@ use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
-use glium::DisplayBuild;
-
 fn main() {
 
     // OS Window
@@ -19,15 +17,23 @@ fn main() {
         .unwrap();
     */
 
-        let (mut pa, mut pb) = afi::create_port();
+        let mut pa = afi::create_port();
 
-        let mut buf = vec![0u8; 4];
+        let mut buf = vec![0u8; 256];
 
         loop {
+
+            let buf_str = String::from_utf8(buf.clone());
+
             pa.read(&mut buf[..]);
-            println!("{} {} {} {} ", buf[0], buf[1], buf[2], buf[3]);
-            sleep(Duration::from_millis(16));
-            //for num in &mut buf { *num = 0 }
+
+			match buf_str {
+			  Ok(s) => println!("{}", s),
+			  Err(why) => panic!("{}", why)
+			}
+
+            sleep(Duration::from_millis(66));
+
         }
 
 /*

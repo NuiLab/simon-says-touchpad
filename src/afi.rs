@@ -11,18 +11,13 @@ const SETTINGS: serial::PortSettings = serial::PortSettings {
     flow_control: serial::FlowNone,
 };
 
-pub fn create_port() -> (serial::windows::COMPort, serial::windows::COMPort) {
+pub fn create_port() -> serial::windows::COMPort {
 
     use self::SETTINGS;
 
     let mut pa = serial::windows::COMPort::open("COM4").expect("Fail alpha port!");
     pa.configure(&SETTINGS);
-    pa.set_timeout(Duration::from_millis(16));
-
-    let mut pb = serial::windows::COMPort::open("COM6").expect("Fail beta port!");
-    pb.configure(&SETTINGS);
-    pb.set_timeout(Duration::from_millis(16));
-
-    (pa, pb)
+    pa.set_timeout(Duration::from_millis(1));
+    pa
 }
 
