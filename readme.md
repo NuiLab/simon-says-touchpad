@@ -1,8 +1,16 @@
+![Cover Image](docs/images/cover.gif)
+
 # Simon Says Touchpad Game
 
-🙈🙉🙊 Simon says game for a smart touchpad capstone project. 
+🙈🙉🙊 Simon Says game for a smart touchpad (Codename AFI) capstone project.
 
-The Simon Says Touchpad Game is controlled via a Flora and communiates with bluetooth HC-05 in order to send data to the application. 
+## How It Works
+
+The game is controlled via an Adafruit Flora that communicates with the app via a bluetooth HC-05 module.
+
+![Wrist Diagram](docs/images/wrist-diagram.png)
+
+The device has 4 pressure sensitive locations that act as the highlighted regions in Simon Says.
 
 ## Credit
 
