@@ -20,7 +20,31 @@ const SETTINGS: serial::PortSettings = serial::PortSettings {
     flow_control: serial::FlowNone,
 };
 
-pub fn create_port() -> serial::windows::COMPort {
+pub struct Input {
+    port: serial::windows::COMPort,
+    buf: [u8; 256],
+    pub fbuf: [f32; 4]
+}
+
+impl Input {
+    pub fn new() -> Input {
+        let port = 0;
+        Input {
+            port,
+            buf: [0u8; 256],
+            output: [0.; 4]
+        }
+    }
+
+    updatffed(&self) -> [f32; 4] {
+        return self.fbuf;
+    }
+}
+
+
+fn create_port() -> serial::windows::COMPort {
+
+    use self::SETTINGS;
 
     let json_data = {
         use std::io::Error;
@@ -48,20 +72,23 @@ pub fn create_port() -> serial::windows::COMPort {
 
             match file.write_all(contents.as_bytes()) {
 
-        Err(why) => {
-            panic!("couldn't write to config.json: {}",
-                                               why.description())
-        },
-        Ok(_) => println!("Wrote default configuration to file!")
+                Err(why) => panic!("couldn't write to config.json: {}", why.description()),
+                Ok(_) => println!("Wrote default configuration to file!"),
             }
         }
+
+    json::parse(&contents);
+    
     };
 
-    use self::SETTINGS;
 
-    let mut port = match serial::windows::COMPort::open("COM4") {
+    let port_name = json_data["port"].as_str();
+
+    let port = match port_name {
+        Ok(n) => {
+                let mut port = match serial::windows::COMPort::open(n) {
         Ok(p) => p,
-        Err(why) => panic!("Couldn't setup ports")
+        Err(why) => panic!("Couldn't setup ports!"),
     };
 
     port.configure(&SETTINGS);
@@ -69,9 +96,9 @@ pub fn create_port() -> serial::windows::COMPort {
     port.set_timeout(Duration::from_millis(16));
 
     port
-}
 
-pub fn read(&mut port: serial::windows::COMPort, buf: &mut Vec<u8>) {
-        port.read(&mut buf[..]);
-}
+        }
+        Err(why) => panic!("Couldn't read ports!")
+    }
 
+}
