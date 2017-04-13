@@ -23,12 +23,12 @@ const SETTINGS: serial::PortSettings = serial::PortSettings {
 pub struct Input {
     port: serial::windows::COMPort,
     buf: [u8; 256],
-    pub fbuf: [f32; 4]
+    pub output: [f32; 4]
 }
 
 impl Input {
     pub fn new() -> Input {
-        let port = 0;
+        let port = create_port();
         Input {
             port,
             buf: [0u8; 256],
@@ -36,8 +36,8 @@ impl Input {
         }
     }
 
-    updatffed(&self) -> [f32; 4] {
-        return self.fbuf;
+    pub fn update(&self) -> [f32; 4] {
+        return self.output;
     }
 }
 
