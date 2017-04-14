@@ -1,10 +1,10 @@
 #version 110
-s
+
 attribute vec2 position;
-attribute vec2 uv;
-varying vec2 oUV;
+attribute vec2 auv;
+varying vec2 uv;
 
 void main() {
-    oUV = uv;
+    uv = auv;
     gl_Position = vec4(position, 0.0, 1.0);
 }

@@ -36,6 +36,7 @@ use self::glium::{DisplayBuild, Display, VertexBuffer, IndexBuffer, Program};
 use self::glium::index::PrimitiveType;
 pub use self::glium::glutin::Event;
 use self::glium::Surface;
+use glium::backend::glutin_backend::PollEventsIter;
 
 use std::time::{Duration, Instant};
 
@@ -89,30 +90,17 @@ impl<T> Renderer<T> {
 
         let ibo = glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &IBO).unwrap();
 
+        let mut frag = String::new();
+        frag.push_str(include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/frag.glsl")});
+        frag.push_str(fs);
+
         let program = program!(&display, 
       110 => {
-            vertex: "
-                #version 110
-                uniform mat4 matrix;
-                attribute vec2 position;
-                attribute vec3 color;
-                varying vec3 vColor;
-                void main() {
-                    gl_Position = vec4(position, 0.0, 1.0) * matrix;
-                    vColor = color;
-                }
-            ",
+            vertex: include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/vert.glsl")},
 
-            fragment: "
-                #version 110
-                varying vec3 vColor;
-                void main() {
-                    gl_FragColor = vec4(vColor, 1.0);
-                }
-            "
-        }
-        )
-                .unwrap();
+            fragment: frag.as_str()
+
+        }).unwrap();
 
         Renderer {
             display,
@@ -126,13 +114,17 @@ impl<T> Renderer<T> {
         }
     }
 
-    pub fn update(&self, other_uniforms: T) {
+    pub fn events(&mut self) -> PollEventsIter {
+        self.display.poll_events()
+    }
+
+    pub fn update(&mut self, other_uniforms: T) {
 
         let mut target = self.display.draw();
 
         target.clear_color(0.0, 0.0, 0.0, 0.0);
 
-         let uniforms = uniform! {
+        let uniforms = uniform! {
             resolution: self.resolution,
             mouse: self.mouse,
             time: self.now.elapsed().as_secs() as f32 + (self.now.elapsed().subsec_nanos() as f32 / 1000000000.0)
@@ -148,26 +140,26 @@ impl<T> Renderer<T> {
 
         target.finish().unwrap();
 
+        let mut events = self.display.poll_events();
+
         // Poll IO
-        for event in self.display.poll_events() {
+        for event in events {
+
             match event {
-                Event::KeyboardInput(glium::glutin::ElementState::Released,
-                                     _,
-                                     Some(glium::glutin::VirtualKeyCode::Escape)) => {
-                    return;
-                }
+
                 Event::MouseInput(glium::glutin::ElementState::Pressed,
                                   glium::glutin::MouseButton::Left) => {
                     self.mouse = [self.mouse[0], self.mouse[1], 1., self.mouse[3]];
                 }
+
                 Event::MouseInput(glium::glutin::ElementState::Released,
                                   glium::glutin::MouseButton::Left) => {
                     self.mouse = [self.mouse[0], self.mouse[1], 0., self.mouse[3]];
                 }
+
                 Event::MouseMoved(x, y) => {
                     self.mouse = [x as f32, y as f32, self.mouse[2], self.mouse[3]];
                 }
-                Event::Closed => return,
                 _ => (),
             }
         }

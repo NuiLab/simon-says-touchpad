@@ -1,11 +1,13 @@
 extern crate serial;
 extern crate json;
 
+use self::json::JsonValue;
 use self::serial::prelude::*;
 use std::time::Duration;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::error::Error;
+use std::str::from_utf8;
 
 const DEFAULTCONFIG: &str = "\
 { 
@@ -22,31 +24,95 @@ const SETTINGS: serial::PortSettings = serial::PortSettings {
 
 pub struct Input {
     port: serial::windows::COMPort,
-    buf: [u8; 256],
-    pub output: [f32; 4]
+    buf: Vec<u8>,
+    pub output: [f32; 4],
 }
 
 impl Input {
     pub fn new() -> Input {
-        let port = create_port();
         Input {
-            port,
-            buf: [0u8; 256],
-            output: [0.; 4]
+            port: create_port(),
+            buf: vec![0u8; 32],
+            output: [0.; 4],
         }
     }
 
-    pub fn update(&self) -> [f32; 4] {
-        return self.output;
+    // Synchronous Input Update
+    pub fn update(&mut self) -> [f32; 4] {
+
+        let mut ftoken: Vec<f32> = Vec::new();
+
+        let mut new_line = String::new();
+
+        loop {
+
+            let mut buf = vec![0u8; 256];
+
+            {
+                match self.port.read(&mut buf) {
+                    Ok(size) => {
+                        if size == 0 {
+                            continue;
+                        } else {
+                            let str_buf = match from_utf8(&mut buf) {
+                                Ok(v) => v,
+                                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                            };
+
+                            new_line.push_str(str_buf);
+                        }
+                    }
+                    Err(_) => continue,
+                }
+            }
+
+            buf = vec![0u8; 256];
+
+            let tokens: Vec<&str> = new_line.split_whitespace().collect();
+
+            if (tokens.len() >= 4) {
+                break;
+            }
+        }
+
+        // Traverse new_line till we find a \n, then split it there
+        let mut token_index = match new_line.find('\n') {
+            Some(nl) => nl,
+            None => 0
+        };
+
+        let tokens = new_line.split_at(token_index).1.split_whitespace();
+
+        for token in tokens {
+            match token {
+                x => {
+                    let f = x.parse::<f32>();
+                    match f {
+                        Ok(num) => ftoken.push(num),
+                        Err(e) => ftoken.push(0.),
+                    }
+
+                }
+            }
+        }
+
+        for (i, t) in ftoken.iter().enumerate() {
+            if i < self.output.len() {
+                self.output[i] = *t;
+            }
+        }
+        self.buf = vec![0u8; 32];
+
+        self.output
     }
 }
-
 
 fn create_port() -> serial::windows::COMPort {
 
     use self::SETTINGS;
 
-    let json_data = {
+    let contents = {
+
         use std::io::Error;
 
         let open = OpenOptions::new()
@@ -66,6 +132,7 @@ fn create_port() -> serial::windows::COMPort {
             Err(why) => panic!("couldn't read config.json: {}", why.description()),
             Ok(_) => println!("Opened config.json file."),
         }
+
         if contents.is_empty() {
 
             contents.insert_str(0, DEFAULTCONFIG);
@@ -77,28 +144,33 @@ fn create_port() -> serial::windows::COMPort {
             }
         }
 
-    json::parse(&contents);
-    
+        contents
     };
 
+
+    let json_data = match json::parse(&contents) {
+        Err(why) => panic!("JSON data couldn't be parsed, verify your JSON."),
+        Ok(data) => data,
+    };
 
     let port_name = json_data["port"].as_str();
 
     let port = match port_name {
-        Ok(n) => {
-                let mut port = match serial::windows::COMPort::open(n) {
-        Ok(p) => p,
-        Err(why) => panic!("Couldn't setup ports!"),
-    };
+        Some(n) => {
+            let mut port = match serial::windows::COMPort::open(n) {
+                Ok(p) => p,
+                Err(why) => panic!("Couldn't setup ports!"),
+            };
 
-    port.configure(&SETTINGS);
+            port.configure(&SETTINGS);
 
-    port.set_timeout(Duration::from_millis(16));
+            port.set_timeout(Duration::from_millis(16));
 
-    port
+            port
 
         }
-        Err(why) => panic!("Couldn't read ports!")
-    }
+        None => panic!("Couldn't read ports!"),
+    };
 
+    port
 }

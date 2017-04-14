@@ -14,23 +14,22 @@ use graphics::Event;
 fn main() {
 
     // AFI Setup
-    let input = afi::Input::new();
+    let mut input = afi::Input::new();
 
     // Renderer
-    let fs = r"\
-// Uniforms for time, mouse position, resolution, 
-// etc are prepended by the renderer.
+    let fs = include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/frag.glsl")};
 
-void main() {
-    outColor = vec4(1.);
-}
-";
-    let renderer = graphics::Renderer::new(fs, [0f32; 4]);
+
+    let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
     loop {
-        match renderer.update(input.update()) {
-            Event::Closed => return,
-            _ => (),
+        renderer.update(input.update());
+        for event in renderer.events() {
+            match event {
+                Event::Closed => return,
+                _ => (),
+            }
         }
+
     }
 }
