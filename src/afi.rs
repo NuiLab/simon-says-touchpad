@@ -65,7 +65,7 @@ impl Input {
                     Err(_) => continue,
                 }
             }
-
+          
             buf = vec![0u8; 256];
 
             let tokens: Vec<&str> = new_line.split_whitespace().collect();
@@ -105,6 +105,7 @@ impl Input {
 
         self.output
     }
+
 }
 
 fn create_port() -> serial::windows::COMPort {
