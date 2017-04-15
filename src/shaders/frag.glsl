@@ -1,20 +1,3 @@
-#version 450
-
-/*************************************************************************
-* Uniforms
-*************************************************************************/
-
-layout(set = 0, binding = 0) uniform Block {
-    vec4 mouse;
-    vec2 resolution;
-    float time;
-    float _padding1_;
-    vec4 fabric;
-} uniforms;
-
-layout (location = 0) in vec2 iUV;
-layout (location = 0) out vec4 oColor;
-
 /*************************************************************************
 * Constants/Globals
 *************************************************************************/
@@ -395,33 +378,6 @@ vec2 scenedf(vec3 p)
 * Main
 *************************************************************************/
 
-void main()
-{
-    // Setup
-    vec3 col = vec3(.157, .153, .169);
-    vec2 aspectRatio = vec2(1., (uniforms.resolution.y / uniforms.resolution.x));
-    vec2 uv = ((iUV - vec2(.5)) * aspectRatio) + vec2(.5);
-    vec2 uvc = (uv - vec2(.5));
-    float time = uniforms.time * 4.;
-
-    // Mouse Cursor
-    vec2 mouse = (((uniforms.mouse.xy / uniforms.resolution) - vec2(.5)) * aspectRatio) + vec2(.5);
-    float cursor = (1. - saturate(dot((uv - mouse) * 16., (uv - mouse) * 16.))) * (.5 * uniforms.mouse.z);
-    col += vec3(cursor * .2);
-
-    // Setup Camera
-    CameraData cam = setupCamera(uvc);
-
-    //Animate Camera
-    animateCamera();
-
-    // Scene Marching
-    vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
-
-
-
-    // Vignette
-    col = mix(col, vec3(.157, .153, .169), dot(uvc * 2.5, uvc * 2.5));
-    
-    oColor = vec4(col, 1.0);
+void main() {
+  
 }

@@ -1,67 +1,32 @@
-extern crate serial;
+#[macro_use]
 extern crate glium;
 
 mod afi;
+mod graphics;
 
 use std::io::Read;
 use std::thread::sleep;
 use std::time::Duration;
 
+use graphics::Event;
+
 fn main() {
 
-    // OS Window
-    /*
-    let window = glium::glutin::WindowBuilder::new()
-        .with_fullscreen(glium::glutin::get_primary_monitor())
-        .build_glium()
-        .unwrap();
-    */
+    // AFI Setup
+    let mut input = afi::Input::new();
 
-        let mut pa = afi::create_port();
+    // Renderer
+    let fs = include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/frag.glsl")};
 
-        let mut buf = vec![0u8; 256];
+    let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
-        loop {
-
-            let buf_str = String::from_utf8(buf.clone());
-
-            pa.read(&mut buf[..]);
-
-			match buf_str {
-			  Ok(s) => println!("{}", s),
-			  Err(why) => panic!("{}", why)
-			}
-
-            sleep(Duration::from_millis(66));
-
-        }
-
-/*
     loop {
-
-        for ev in window.window().poll_events() {
-            match ev {
-                Event::KeyboardInput(winit::ElementState::Released,
-                                     _,
-                                     Some(winit::VirtualKeyCode::Escape)) => {
-                    println!("Closing visualizer!");
-                    return;
-                }
-                Event::MouseInput(winit::ElementState::Pressed, winit::MouseButton::Left) => {
-                    mleft = 1.0;
-                }
-                Event::MouseInput(winit::ElementState::Released, winit::MouseButton::Left) => {
-                    mleft = 0.0;
-                }
-                Event::MouseMoved(x, y) => {
-                    mx = x as f32;
-                    my = y as f32;
-                }
+        renderer.update(input.update());
+        for event in renderer.events() {
+            match event {
                 Event::Closed => return,
                 _ => (),
             }
         }
     }
-    */
 }
-
