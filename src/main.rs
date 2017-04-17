@@ -21,8 +21,7 @@ fn main() {
     let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
     loop {
-        renderer.update(input.update());
-        for event in renderer.events() {
+        for event in renderer.update(input.update()) {
             match event {
                 Event::Closed => return,
                 _ => (),

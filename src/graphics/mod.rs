@@ -113,12 +113,8 @@ impl<T> Renderer<T> {
             other_uniforms,
         }
     }
-
-    pub fn events(&mut self) -> PollEventsIter {
-        self.display.poll_events()
-    }
-
-    pub fn update(&mut self, other_uniforms: T) {
+    
+    pub fn update(&mut self, other_uniforms: T) -> PollEventsIter {
 
         let mut target = self.display.draw();
 
@@ -140,28 +136,31 @@ impl<T> Renderer<T> {
 
         target.finish().unwrap();
 
-        let mut events = self.display.poll_events();
-
         // Poll IO
-        for event in events {
+        {
+            let events = self.display.poll_events();
+            for event in events {
 
-            match event {
+                match event {
 
-                Event::MouseInput(glium::glutin::ElementState::Pressed,
-                                  glium::glutin::MouseButton::Left) => {
-                    self.mouse = [self.mouse[0], self.mouse[1], 1., self.mouse[3]];
+                    Event::MouseInput(glium::glutin::ElementState::Pressed,
+                                    glium::glutin::MouseButton::Left) => {
+                        self.mouse = [self.mouse[0], self.mouse[1], 1., self.mouse[3]];
+                    }
+
+                    Event::MouseInput(glium::glutin::ElementState::Released,
+                                    glium::glutin::MouseButton::Left) => {
+                        self.mouse = [self.mouse[0], self.mouse[1], 0., self.mouse[3]];
+                    }
+
+                    Event::MouseMoved(x, y) => {
+                        self.mouse = [x as f32, y as f32, self.mouse[2], self.mouse[3]];
+                    }
+                    _ => (),
                 }
-
-                Event::MouseInput(glium::glutin::ElementState::Released,
-                                  glium::glutin::MouseButton::Left) => {
-                    self.mouse = [self.mouse[0], self.mouse[1], 0., self.mouse[3]];
-                }
-
-                Event::MouseMoved(x, y) => {
-                    self.mouse = [x as f32, y as f32, self.mouse[2], self.mouse[3]];
-                }
-                _ => (),
             }
         }
+    
+        self.display.poll_events()
     }
 }
