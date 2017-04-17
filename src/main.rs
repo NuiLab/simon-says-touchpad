@@ -20,12 +20,17 @@ fn main() {
 
     let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
-    loop {
-        for event in renderer.update(input.update()) {
+    let mut run = true;
+
+    while run {
+        renderer.update(input.update(), |event: &Event| {
             match event {
-                Event::Closed => return,
+                &Event::KeyboardInput(glium::glutin::ElementState::Released,_, Some(glium::glutin::VirtualKeyCode::Escape)) => {
+                    run = false;
+                },
+                &Event::Closed => return,
                 _ => (),
             }
-        }
+        });
     }
 }

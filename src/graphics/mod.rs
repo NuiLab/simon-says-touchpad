@@ -114,7 +114,7 @@ impl<T> Renderer<T> {
         }
     }
     
-    pub fn update(&mut self, other_uniforms: T) -> PollEventsIter {
+    pub fn update<F>(&mut self, other_uniforms: T, mut lambda: F) where F: FnMut(&Event) {
 
         let mut target = self.display.draw();
 
@@ -139,7 +139,10 @@ impl<T> Renderer<T> {
         // Poll IO
         {
             let events = self.display.poll_events();
+            
             for event in events {
+                
+                lambda(&event);
 
                 match event {
 
@@ -160,7 +163,5 @@ impl<T> Renderer<T> {
                 }
             }
         }
-    
-        self.display.poll_events()
     }
 }
