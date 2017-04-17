@@ -4,10 +4,6 @@ extern crate glium;
 mod afi;
 mod graphics;
 
-use std::io::Read;
-use std::thread::sleep;
-use std::time::Duration;
-
 use graphics::Event;
 
 fn main() {
