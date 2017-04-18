@@ -16,6 +16,7 @@ fn main() {
 
     let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
+    // Loop
     let mut run = true;
 
     while run {
