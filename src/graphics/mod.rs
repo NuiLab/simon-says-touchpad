@@ -43,26 +43,26 @@ use std::time::{Duration, Instant};
 #[derive(Copy, Clone)]
 struct Vertex {
     position: [f32; 2],
-    uv: [f32; 2],
+    auv: [f32; 2],
 }
 
-implement_vertex!(Vertex, position, uv);
+implement_vertex!(Vertex, position, auv);
 
 static VBO: [Vertex; 4] = [Vertex {
                                position: [1.0, -1.0],
-                               uv: [1.0, 0.0],
+                               auv: [1.0, 0.0],
                            },
                            Vertex {
                                position: [-1.0, -1.0],
-                               uv: [0.0, 0.0],
+                               auv: [0.0, 0.0],
                            },
                            Vertex {
                                position: [1.0, 1.0],
-                               uv: [1.0, 1.0],
+                               auv: [1.0, 1.0],
                            },
                            Vertex {
                                position: [-1.0, 1.0],
-                               uv: [0.0, 1.0],
+                               auv: [0.0, 1.0],
                            }];
 
 static IBO: [u16; 6] = [0, 1, 2, 1, 2, 3];
@@ -81,6 +81,7 @@ pub struct Renderer<T> {
 
 impl<T> Renderer<T> {
     pub fn new(fs: &str, other_uniforms: T) -> Renderer<T> {
+
         let display = glium::glutin::WindowBuilder::new()
             .with_fullscreen(glium::glutin::get_primary_monitor())
             .build_glium()
@@ -91,24 +92,39 @@ impl<T> Renderer<T> {
         let ibo = glium::IndexBuffer::new(&display, PrimitiveType::TriangleStrip, &IBO).unwrap();
 
         let mut frag = String::new();
+
         frag.push_str(include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/frag.glsl")});
         frag.push_str(fs);
 
         let program = program!(&display, 
-      110 => {
-            vertex: include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/vert.glsl")},
+            140 =>  {
+                    vertex: include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/vert.glsl")},
 
-            fragment: frag.as_str()
+                    fragment: frag.as_str()
 
-        }).unwrap();
+                }
+            110 => {
+                    vertex: include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/vert.glsl")},
 
+                    fragment: frag.as_str()
+
+                }
+            100 => {
+                    vertex: include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/graphics/shaders/vert.glsl")},
+
+                    fragment: frag.as_str()
+                    }
+            ).unwrap();
+
+        let r = display.get_framebuffer_dimensions();
+        
         Renderer {
             display,
             program,
             vbo,
             ibo,
             mouse: [0.; 4],
-            resolution: [0.; 2],
+            resolution: [r.0 as f32, r.1 as f32],
             now: Instant::now(),
             other_uniforms,
         }

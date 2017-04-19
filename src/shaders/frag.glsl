@@ -21,6 +21,9 @@
 #define MAT_FUNNEL 4.
 #define MAT_CHAMBER 5.
 
+#define SKYBLUE vec3(.2, .2, .2)
+#define SKYORANGE vec3(0.9, 0.92, 0.9)
+
 //Globals
 vec3 g_camPointAt = vec3(0.);
 vec3 g_camOrigin = vec3(0.);
@@ -172,7 +175,11 @@ float sdCylinder(vec3 p, vec2 h)
 
 vec2 scenedf(vec3 p)
 {
-  vec2 obj = vec2(0.);
+  vec2 obj = vec2(sdPlane((p + vec3(0., .2, 0.))), MAT_GUNWHITE);
+  obj = opU(obj, vec2(sdCylinder(p + vec3( -5., .5, 0.), vec2(2., .75)), MAT_GUNBLACK));
+
+  // opS()
+  // opS()
   return obj;
 }
 
@@ -201,11 +208,11 @@ void animateCamera()
   //Camera
   g_camOrigin = vec3(0., 1.68, 0.); //1.68
 
-  vec2 click = mouse.xy / resolution.xx;
-  click = vec2(0.7, 0.25) * click + vec2(0., -0.05);
+  vec2 click = (mouse.xy / resolution.xx) - vec2(.5, .25);
+  click = vec2(0.7, 0.25) * click;
 
   float yaw = PI_OVER_TWO * (click.x);
-  float pitch = PI_OVER_TWO * ((resolution.x / resolution.y) * click.y);
+  float pitch = PI_OVER_TWO * ((resolution.x / resolution.y) * -click.y);
 
   g_camPointAt = g_camOrigin + vec3(cos(yaw), tan(pitch) * cos(yaw), sin(yaw));
 }
@@ -309,13 +316,13 @@ void material(float surfid, inout SurfaceData surf)
 {
   if (surfid - .5 < MAT_GUNWHITE)
   {
-    surf.basecolor = vec3(.94);
+    surf.basecolor = vec3(.91);
     surf.roughness = .85;
     surf.metallic = .4;
   }
   else if (surfid - .5 < MAT_GUNGRAY)
   {
-    surf.basecolor = vec3(0.1);
+    surf.basecolor = vec3(0.7, .2, .2);
     surf.roughness = 6.;
     surf.metallic = .3;
   }
@@ -412,16 +419,6 @@ vec3 sampleEnvLight(vec3 ldir, vec3 lcolor, SurfaceData surf)
   return cout;
 }
 
-vec3 integrateEnvLight(SurfaceData surf)
-{
-  vec3 vdir = normalize(surf.point - g_camOrigin);
-  vec3 envdir = reflect(vdir, surf.normal);
-  vec4 specolor = vec4(.4); //* mix(texture(iChannel0, envdir), texture(iChannel1, envdir), surf.roughness);
-
-  vec3 envspec = sampleEnvLight(envdir, specolor.rgb, surf);
-  return envspec;
-}
-
 vec3 shadeSurface(SurfaceData surf)
 {
 
@@ -444,10 +441,28 @@ vec3 shadeSurface(SurfaceData surf)
     cout += integrateDirLight(dir1, col1, surf);
     cout += integrateDirLight(dir2, .0 * col2, surf);
     cout += integrateDirLight(g_ldir, vec3(0.4), surf);
-    cout += integrateEnvLight(surf);
+    //cout += integrateEnvLight(surf);
     cout *= (1. - (3.5 * ao));
   }
   return cout;
+}
+
+/*************************************************************************
+* Postprocessing
+*************************************************************************/
+
+vec3 vignette(vec3 texel, vec2 vUv, float darkness, float offset) {
+	vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
+	return mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv));
+}
+
+vec3 overlay(vec3 inColor, vec3 overlay)
+{
+	vec3 outColor = vec3(0.);
+	outColor.r = (inColor.r > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.r - 0.5)) * (1.0 - overlay.r)) : ((2.0 * inColor.r) * overlay.r);
+	outColor.g = (inColor.g > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.g - 0.5)) * (1.0 - overlay.g)) : ((2.0 * inColor.g) * overlay.g);
+	outColor.b = (inColor.b > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.b - 0.5)) * (1.0 - overlay.b)) : ((2.0 * inColor.b) * overlay.b);
+	return outColor;
 }
 
 /*************************************************************************
@@ -456,5 +471,41 @@ vec3 shadeSurface(SurfaceData surf)
 
 void main()
 {
-  gl_FragColor = vec4(1., 1., 1., 1.);
+
+  // Setup
+  vec2 aspectRatio = vec2(1., (resolution.y / resolution.x));
+  vec2 uvv = ((uv - vec2(.5)) * aspectRatio) + vec2(.5);
+  vec2 uvc = (uvv - vec2(.5));
+
+  // Animate globals
+	animateCamera();
+
+	// Setup Camera
+	CameraData cam = setupCamera(uvc);
+
+	// Raymarch
+	vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
+
+	// Materials/Shading
+	vec3 scenecol = vec3(0.);
+	if (scenemarch.y > EPSILON)
+	{
+		vec3 mp = cam.origin + scenemarch.x * cam.dir;
+		vec3 mn = calcNormal(mp);
+
+		SurfaceData currSurf = INITSURF(mp, mn);
+
+		material(scenemarch.y, currSurf);
+		scenecol = shadeSurface(currSurf);
+	}
+
+	// Fog
+	scenecol = mix(scenecol, SKYORANGE, smoothstep(0., 50., scenemarch.x));
+	//float dvig = dot(uvc, uvc);
+	//scenecol = mix(scenecol, SKYBLUE, smoothstep(0., 15., scenemarch.x * dvig));
+
+	// Postprocessing
+	//scenecol = vignette(scenecol, uvc, 1.3, 0.9);
+	//scenecol += 0.5*vec3(uvc.y);
+	gl_FragColor = vec4(scenecol, 1.0);
 }

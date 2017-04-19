@@ -1,5 +1,3 @@
-#version 110
-
 attribute vec2 position;
 attribute vec2 auv;
 varying vec2 uv;

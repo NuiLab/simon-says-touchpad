@@ -13,7 +13,6 @@ fn main() {
 
     // Renderer
     let fs = include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/frag.glsl")};
-
     let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
 
     // Loop
