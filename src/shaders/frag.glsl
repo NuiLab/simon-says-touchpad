@@ -15,18 +15,23 @@
 #define DISTMARCH_STEPS 60
 #define DISTMARCH_MAXDIST 50.
 
-#define MAT_GUNWHITE 1.
-#define MAT_GUNGRAY 2.
-#define MAT_GUNBLACK 3.
-#define MAT_FUNNEL 4.
-#define MAT_CHAMBER 5.
+#define MAT_WHITE 1.
+#define MAT_GRAY 2.
+#define MAT_RED 3.
+#define MAT_LIGHTRED 4.
+#define MAT_ORANGE 5.
+#define MAT_LIGHTORANGE 6.
+#define MAT_GREEN 7.
+#define MAT_LIGHTGREEN 8.
+#define MAT_BLUE 9.
+#define MAT_LIGHTBLUE 10.
 
-#define SKYBLUE vec3(.2, .2, .2)
-#define SKYORANGE vec3(0.9, 0.92, 0.9)
+#define SKYGRAY vec3(.99)
+#define SKYWHITE vec3(0.9)
 
 //Globals
-vec3 g_camPointAt = vec3(0.);
-vec3 g_camOrigin = vec3(0.);
+vec3 g_camPointAt = vec3(1., 0., 0.);
+vec3 g_camOrigin = vec3(0., 5., 0.);
 vec3 g_ldir = vec3(-.4, 1., -.3);
 
 //Camera Data
@@ -52,94 +57,97 @@ struct SurfaceData
 
 vec2 opU(vec2 a, vec2 b)
 {
-	if (a.x < b.x) return a;
-	else return b;
+  if (a.x < b.x)
+    return a;
+  else
+    return b;
 }
 
 float opS(float d1, float d2)
 {
-	return max(-d2, d1);
+  return max(-d2, d1);
 }
 
 vec3 opCheapBend(vec3 p, vec2 a)
 {
-	float c = cos(a.x*p.y);
-	float s = sin(a.y*p.y);
-	mat2  m = mat2(c, -s, s, c);
-	return vec3(m*p.xy, p.z);
+  float c = cos(a.x * p.y);
+  float s = sin(a.y * p.y);
+  mat2 m = mat2(c, -s, s, c);
+  return vec3(m * p.xy, p.z);
 }
 
 float pow5(float v)
 {
-	float tmp = v*v;
-	return tmp*tmp*v;
+  float tmp = v * v;
+  return tmp * tmp * v;
 }
 
 vec3 opTwist(vec3 p, float a)
 {
-	float  c = cos(a*p.y + a);
-	float  s = sin(a*p.y + a);
-	mat2   m = mat2(c, -s, s, c);
-	return vec3(m*p.xz, p.y);
+  float c = cos(a * p.y + a);
+  float s = sin(a * p.y + a);
+  mat2 m = mat2(c, -s, s, c);
+  return vec3(m * p.xz, p.y);
 }
 
 mat3 makeRotateX(float a)
 {
-	float  c = cos(a); float  s = sin(a);
-	return mat3(1.0, c, -s,
-		0.0, s, c,
-		0.0, 0.0, 1.0);
+  float c = cos(a);
+  float s = sin(a);
+  return mat3(1.0, c, -s,
+              0.0, s, c,
+              0.0, 0.0, 1.0);
 }
 
 mat3 makeRotateY(float a)
 {
-	float  c = cos(a); float  s = sin(a);
-	return mat3(c, 0.0, s,
-		0.0, 1.0, 0.0,
-		-s, 0.0, c);
+  float c = cos(a);
+  float s = sin(a);
+  return mat3(c, 0.0, s,
+              0.0, 1.0, 0.0,
+              -s, 0.0, c);
 }
 
 mat3 makeRotateZ(float a)
 {
-	float  c = cos(a); float  s = sin(a);
-	return mat3(c, -s, 0.0,
-		s, c, 0.0,
-		0.0, 0.0, 1.0);
+  float c = cos(a);
+  float s = sin(a);
+  return mat3(c, -s, 0.0,
+              s, c, 0.0,
+              0.0, 0.0, 1.0);
 }
 
 vec2 cartesianToPolar(vec2 p)
 {
-	float l = length(p);
-	return vec2(acos(p.x / l), asin(p.y / l));
+  float l = length(p);
+  return vec2(acos(p.x / l), asin(p.y / l));
 }
-
 
 vec2 cartesianToPolar(vec3 p)
 {
-	return vec2(PI / 2. - acos(p.y / length(p)), atan(p.z, p.x));
+  return vec2(PI / 2. - acos(p.y / length(p)), atan(p.z, p.x));
 }
-
 
 vec3 DomainRotateSymmetry(const in vec3 vPos, const in float fSteps)
 {
-	float angle = atan(vPos.x, vPos.z);
+  float angle = atan(vPos.x, vPos.z);
 
-	float fScale = fSteps / (PI * 2.0);
-	float steppedAngle = (floor(angle * fScale + 0.5)) / fScale;
+  float fScale = fSteps / (PI * 2.0);
+  float steppedAngle = (floor(angle * fScale + 0.5)) / fScale;
 
-	float s = sin(-steppedAngle);
-	float c = cos(-steppedAngle);
+  float s = sin(-steppedAngle);
+  float c = cos(-steppedAngle);
 
-	vec3 vResult = vec3(c * vPos.x + s * vPos.z,
-		vPos.y,
-		-s * vPos.x + c * vPos.z);
+  vec3 vResult = vec3(c * vPos.x + s * vPos.z,
+                      vPos.y,
+                      -s * vPos.x + c * vPos.z);
 
-	return vResult;
+  return vResult;
 }
 
 float lstep(float edge0, float edge1, float x)
 {
-	return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+  return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
 
 /*************************************************************************
@@ -167,19 +175,77 @@ float sdBox(vec3 p, vec3 b)
   return min(max(d.x, max(d.y, d.z)), 0.0) + length(max(d, 0.0));
 }
 
-float sdCylinder(vec3 p, vec2 h)
+float sdRoundCylinder(vec3 p, vec2 h, float r)
 {
   vec2 d = abs(vec2(length(p.xz), p.y)) - h;
-  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;
+}
+
+vec2 sdSimonSays(vec3 p, vec4 lights)
+{
+  vec2 base = vec2(sdRoundCylinder(p, vec2(2., .075), .1), MAT_GRAY);
+
+  float col = MAT_RED;
+
+  if (p.x > 0. && p.z > 0.)
+  {
+    col = MAT_ORANGE + lights.y;
+  }
+  else if (p.x > 0. && p.z < 0.)
+  {
+    col = MAT_RED + lights.x;
+  }
+  else if (p.x < 0. && p.z > 0.)
+  {
+    col = MAT_GREEN + lights.z;
+  }
+  else
+  {
+    col = MAT_BLUE + lights.w;
+  }
+
+  if (lights.x > 0.)
+  {
+    if (p.x > 0. && p.z < 0.)
+    {
+      p.y += .05;
+    }
+  }
+  else if (lights.y > 0.)
+  {
+    if (p.x > 0. && p.z > 0.)
+    {
+      p.y += .05;
+    }
+  }
+  else if (lights.z > 0.)
+  {
+    if (p.x < 0. && p.z > 0.)
+    {
+      p.y += .05;
+    }
+  }
+  else if (lights.w > 0.)
+  {
+    if (p.x < 0. && p.z < 0.)
+    {
+      p.y += .05;
+    }
+  }
+
+  float b = sdRoundCylinder(p, vec2(1.8, .25), 0.);
+  b = opS(b, sdBox(p, vec3(3., 1., .1)));
+  b = opS(b, sdBox(p, vec3(.1, 1., 3.))) - .05;
+  vec2 buttons = vec2(b, col);
+
+  return opU(base, buttons);
 }
 
 vec2 scenedf(vec3 p)
 {
-  vec2 obj = vec2(sdPlane((p + vec3(0., .2, 0.))), MAT_GUNWHITE);
-  obj = opU(obj, vec2(sdCylinder(p + vec3( -5., .5, 0.), vec2(2., .75)), MAT_GUNBLACK));
+  vec2 obj = vec2(sdPlane((p + vec3(0., .2, 0.))), MAT_WHITE);
+  obj = opU(obj, sdSimonSays(p + vec3(-5., 0., 0.), vec4(0.)));
 
-  // opS()
-  // opS()
   return obj;
 }
 
@@ -206,9 +272,9 @@ CameraData setupCamera(vec2 st)
 void animateCamera()
 {
   //Camera
-  g_camOrigin = vec3(0., 1.68, 0.); //1.68
+  g_camOrigin = vec3(0., 3.68, 0.); //1.68
 
-  vec2 click = (mouse.xy / resolution.xx) - vec2(.5, .25);
+  vec2 click = (mouse.xy / resolution.xx) - vec2(.5, -0.5);
   click = vec2(0.7, 0.25) * click;
 
   float yaw = PI_OVER_TWO * (click.x);
@@ -314,35 +380,65 @@ vec3 calcNormal(vec3 p)
 
 void material(float surfid, inout SurfaceData surf)
 {
-  if (surfid - .5 < MAT_GUNWHITE)
+  if (surfid - .5 < MAT_WHITE)
   {
     surf.basecolor = vec3(.91);
-    surf.roughness = .85;
-    surf.metallic = .4;
+    surf.roughness = .99;
+    surf.metallic = .01;
   }
-  else if (surfid - .5 < MAT_GUNGRAY)
+  else if (surfid - .5 < MAT_GRAY)
   {
-    surf.basecolor = vec3(0.7, .2, .2);
-    surf.roughness = 6.;
+    surf.basecolor = vec3(0.2);
+    surf.roughness = .95;
     surf.metallic = .3;
   }
-  else if (surfid - .5 < MAT_GUNBLACK)
+  else if (surfid - .5 < MAT_RED)
   {
-    surf.basecolor = vec3(.05);
-    surf.roughness = .6;
-    surf.metallic = .4;
+    surf.basecolor = vec3(.8, .1, .1);
+    surf.roughness = .95;
+    surf.metallic = .1;
   }
-  else if (surfid - .5 < MAT_FUNNEL)
+  else if (surfid - .5 < MAT_LIGHTRED)
   {
-    surf.basecolor = -vec3(.1, .3, .9);
-    surf.roughness = 1.;
-    surf.metallic = 0.;
+    surf.basecolor = vec3(2., .3, .3);
+    surf.roughness = .95;
+    surf.metallic = .14;
   }
-  else if (surfid - .5 < MAT_CHAMBER)
+  else if (surfid - .5 < MAT_ORANGE)
   {
-    surf.basecolor = vec3(6.5);
-    surf.roughness = 0.89;
-    surf.metallic = 0.2;
+    surf.basecolor = vec3(.9, .4, .1);
+    surf.roughness = .95;
+    surf.metallic = .1;
+  }
+  else if (surfid - .5 < MAT_LIGHTORANGE)
+  {
+    surf.basecolor = vec3(3., 1.5, .12);
+    surf.roughness = .9;
+    surf.metallic = .1;
+  }
+  else if (surfid - .5 < MAT_GREEN)
+  {
+    surf.basecolor = vec3(.2, .8, .3);
+    surf.roughness = .95;
+    surf.metallic = .1;
+  }
+  else if (surfid - .5 < MAT_LIGHTGREEN)
+  {
+    surf.basecolor = vec3(.3, 1.98, .3);
+    surf.roughness = .95;
+    surf.metallic = .1;
+  }
+  else if (surfid - .5 < MAT_BLUE)
+  {
+    surf.basecolor = vec3(.3, .4, .8);
+    surf.roughness = .95;
+    surf.metallic = .1;
+  }
+  else if (surfid - .5 < MAT_LIGHTBLUE)
+  {
+    surf.basecolor = vec3(.5, .5, 1.98);
+    surf.roughness = .95;
+    surf.metallic = .1;
   }
 }
 
@@ -451,18 +547,19 @@ vec3 shadeSurface(SurfaceData surf)
 * Postprocessing
 *************************************************************************/
 
-vec3 vignette(vec3 texel, vec2 vUv, float darkness, float offset) {
-	vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
-	return mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv));
+vec3 vignette(vec3 texel, vec2 vUv, float darkness, float offset)
+{
+  vec2 uv = (vUv - vec2(0.5)) * vec2(offset);
+  return mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv));
 }
 
 vec3 overlay(vec3 inColor, vec3 overlay)
 {
-	vec3 outColor = vec3(0.);
-	outColor.r = (inColor.r > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.r - 0.5)) * (1.0 - overlay.r)) : ((2.0 * inColor.r) * overlay.r);
-	outColor.g = (inColor.g > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.g - 0.5)) * (1.0 - overlay.g)) : ((2.0 * inColor.g) * overlay.g);
-	outColor.b = (inColor.b > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.b - 0.5)) * (1.0 - overlay.b)) : ((2.0 * inColor.b) * overlay.b);
-	return outColor;
+  vec3 outColor = vec3(0.);
+  outColor.r = (inColor.r > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.r - 0.5)) * (1.0 - overlay.r)) : ((2.0 * inColor.r) * overlay.r);
+  outColor.g = (inColor.g > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.g - 0.5)) * (1.0 - overlay.g)) : ((2.0 * inColor.g) * overlay.g);
+  outColor.b = (inColor.b > 0.5) ? (1.0 - (1.0 - 2.0 * (inColor.b - 0.5)) * (1.0 - overlay.b)) : ((2.0 * inColor.b) * overlay.b);
+  return outColor;
 }
 
 /*************************************************************************
@@ -478,34 +575,32 @@ void main()
   vec2 uvc = (uvv - vec2(.5));
 
   // Animate globals
-	animateCamera();
+  animateCamera();
 
-	// Setup Camera
-	CameraData cam = setupCamera(uvc);
+  // Setup Camera
+  CameraData cam = setupCamera(uvc);
 
-	// Raymarch
-	vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
+  // Raymarch
+  vec2 scenemarch = distmarch(cam.origin, cam.dir, DISTMARCH_MAXDIST);
 
-	// Materials/Shading
-	vec3 scenecol = vec3(0.);
-	if (scenemarch.y > EPSILON)
-	{
-		vec3 mp = cam.origin + scenemarch.x * cam.dir;
-		vec3 mn = calcNormal(mp);
+  // Materials/Shading
+  vec3 scenecol = vec3(0.);
+  if (scenemarch.y > EPSILON)
+  {
+    vec3 mp = cam.origin + scenemarch.x * cam.dir;
+    vec3 mn = calcNormal(mp);
 
-		SurfaceData currSurf = INITSURF(mp, mn);
+    SurfaceData currSurf = INITSURF(mp, mn);
 
-		material(scenemarch.y, currSurf);
-		scenecol = shadeSurface(currSurf);
-	}
+    material(scenemarch.y, currSurf);
+    scenecol = shadeSurface(currSurf);
+  }
 
-	// Fog
-	scenecol = mix(scenecol, SKYORANGE, smoothstep(0., 50., scenemarch.x));
-	//float dvig = dot(uvc, uvc);
-	//scenecol = mix(scenecol, SKYBLUE, smoothstep(0., 15., scenemarch.x * dvig));
+  // Fog
+  scenecol = mix(scenecol, SKYWHITE, smoothstep(0., 50., scenemarch.x));
 
-	// Postprocessing
-	//scenecol = vignette(scenecol, uvc, 1.3, 0.9);
-	//scenecol += 0.5*vec3(uvc.y);
-	gl_FragColor = vec4(scenecol, 1.0);
+  // Postprocessing
+  scenecol = vignette(scenecol, uvv, 1.3, 0.9);
+
+  gl_FragColor = vec4(scenecol, 1.0);
 }
