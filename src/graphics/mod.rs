@@ -36,9 +36,9 @@ use self::glium::{DisplayBuild, Display, VertexBuffer, IndexBuffer, Program};
 use self::glium::index::PrimitiveType;
 pub use self::glium::glutin::Event;
 use self::glium::Surface;
-use glium::backend::glutin_backend::PollEventsIter;
+use glium::uniforms::AsUniformValue;
 
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -67,20 +67,19 @@ static VBO: [Vertex; 4] = [Vertex {
 
 static IBO: [u16; 6] = [0, 1, 2, 1, 2, 3];
 
-pub struct Renderer<T> {
+pub struct Renderer {
     pub display: Display,
     program: Program,
     vbo: VertexBuffer<Vertex>,
     ibo: IndexBuffer<u16>,
     mouse: [f32; 4],
     resolution: [f32; 2],
-    now: Instant,
-    other_uniforms: T,
+    now: Instant
 }
 
 
-impl<T> Renderer<T> {
-    pub fn new(fs: &str, other_uniforms: T) -> Renderer<T> {
+impl Renderer {
+    pub fn new(fs: &str) -> Renderer {
 
         let display = glium::glutin::WindowBuilder::new()
             .with_fullscreen(glium::glutin::get_primary_monitor())
@@ -125,21 +124,21 @@ impl<T> Renderer<T> {
             ibo,
             mouse: [0.; 4],
             resolution: [r.0 as f32, r.1 as f32],
-            now: Instant::now(),
-            other_uniforms,
+            now: Instant::now()
         }
     }
     
-    pub fn update<F>(&mut self, other_uniforms: T, mut lambda: F) where F: FnMut(&Event) {
+    pub fn update<F, T>(&mut self, other_uniforms: T, mut lambda: F) where F: FnMut(&Event), T: AsUniformValue {
 
         let mut target = self.display.draw();
 
         target.clear_color(0.0, 0.0, 0.0, 0.0);
 
         let uniforms = uniform! {
-            resolution: self.resolution,
             mouse: self.mouse,
-            time: self.now.elapsed().as_secs() as f32 + (self.now.elapsed().subsec_nanos() as f32 / 1000000000.0)
+            resolution: self.resolution,
+            time: self.now.elapsed().as_secs() as f32 + (self.now.elapsed().subsec_nanos() as f32 / 1000000000.0),
+            other: other_uniforms
         };
 
         target

@@ -8,12 +8,14 @@ use graphics::Event;
 
 fn main() {
 
+    println!("🙈🙉🙊 AFI Simon Says Game | Version 0.1.0");
+
     // AFI Setup
     let mut input = afi::Input::new();
 
     // Renderer
     let fs = include_str!{concat!(env!("CARGO_MANIFEST_DIR"), "/src/shaders/frag.glsl")};
-    let mut renderer = graphics::Renderer::new(fs, [0f32; 4]);
+    let mut renderer = graphics::Renderer::new(fs);
 
     // Loop
     let mut run = true;

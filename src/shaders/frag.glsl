@@ -29,6 +29,8 @@
 #define SKYGRAY vec3(.99)
 #define SKYWHITE vec3(0.9)
 
+uniform vec4 other;
+
 //Globals
 vec3 g_camPointAt = vec3(1., 0., 0.);
 vec3 g_camOrigin = vec3(0., 5., 0.);
@@ -244,7 +246,7 @@ vec2 sdSimonSays(vec3 p, vec4 lights)
 vec2 scenedf(vec3 p)
 {
   vec2 obj = vec2(sdPlane((p + vec3(0., .2, 0.))), MAT_WHITE);
-  obj = opU(obj, sdSimonSays(p + vec3(-5., 0., 0.), vec4(0.)));
+  obj = opU(obj, sdSimonSays(p + vec3(-5., 0., 0.), other));
 
   return obj;
 }
