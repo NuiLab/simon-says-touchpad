@@ -36,7 +36,6 @@ use self::glium::{DisplayBuild, Display, VertexBuffer, IndexBuffer, Program};
 use self::glium::index::PrimitiveType;
 pub use self::glium::glutin::Event;
 use self::glium::Surface;
-use glium::uniforms::AsUniformValue;
 
 use std::time::{Instant};
 
@@ -128,7 +127,7 @@ impl Renderer {
         }
     }
     
-    pub fn update<F, T>(&mut self, other_uniforms: T, mut lambda: F) where F: FnMut(&Event), T: AsUniformValue {
+    pub fn update<F>(&mut self, other_uniforms: [f32; 4], mut lambda: F) where F: FnMut(&Event) {
 
         let mut target = self.display.draw();
 

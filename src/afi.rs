@@ -1,11 +1,10 @@
 extern crate serial;
 extern crate json;
 
-use self::serial::prelude::*;
+use self::serial::SerialPort;
 use std::time::Duration;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
-use std::str::from_utf8;
 
 const DEFAULTCONFIG: &str = "\
 { 
@@ -30,83 +29,61 @@ impl Input {
     pub fn new() -> Input {
         Input {
             port: create_port(),
-            buf: vec![0u8; 32],
-            output: [0.; 4],
+            buf: vec![0u8; 256],
+            output: [0.0; 4],
         }
     }
 
     // Synchronous Input Update
     pub fn update(&mut self) -> [f32; 4] {
 
-        let mut ftoken: Vec<f32> = Vec::new();
+        self.output = [0.0f32; 4];
 
-        let mut new_line = String::new();
+        match self.port {
 
-        let mut buf = vec![0u8; 256];
+            Some(ref mut p) => {
+                let mut write = false;
+                let mut index = 0;
+                loop {
 
-        {
-            match self.port {
-                Some(ref mut p) => {
-                    loop {
-                        match p.read(&mut buf) {
-                            Ok(size) => {
-                                if size == 0 {
+                    match p.read(&mut self.buf) {
+                        Ok(size) => {
+                            if size == 0 {
+                                return self.output;
+                            }
+                            for i in 0..size {
+                                // If index == 4, we're done
+                                if index >= self.output.len() {
+                                    break;
+                                }
+                                // if we encounter the header (255), begin pushing data to v.
+                                if self.buf[i] == 255 {
+                                    write = true;
                                     continue;
-                                } else {
-                                    let str_buf = match from_utf8(&mut buf) {
-                                        Ok(v) => v,
-                                        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                    };
+                                }
 
-                                    new_line.push_str(str_buf);
+                                if write {
+                                    self.output[index] = self.buf[i] as f32;
+                                    index += 1;
+                                    if index >= self.output.len() {
+                                        break;
+                                    }
                                 }
                             }
-                            Err(_) => continue,
                         }
-
-
-                        buf = vec![0u8; 256];
-
-                        let tokens: Vec<&str> = new_line.split_whitespace().collect();
-
-                        if tokens.len() >= 4 {
-                            break;
-                        }
-                    }
-
-                    // Traverse new_line till we find a \n, then split it there
-                    let token_index = match new_line.find('\n') {
-                        Some(nl) => nl,
-                        None => 0,
+                        Err(_) => (),
                     };
 
-                    let tokens = new_line.split_at(token_index).1.split_whitespace();
-
-                    for token in tokens {
-                        match token {
-                            x => {
-                                let f = x.parse::<f32>();
-                                match f {
-                                    Ok(num) => ftoken.push(num),
-                                    Err(_) => ftoken.push(0.),
-                                }
-
-                            }
-                        }
+                    if index >= self.output.len() {
+                        break;
                     }
-
-                    for (i, t) in ftoken.iter().enumerate() {
-                        if i < self.output.len() {
-                            self.output[i] = *t;
-                        }
-                    }
-                    self.buf = vec![0u8; 32];
                 }
-                None => (),
             }
+            None => (),
         }
 
         self.output
+
     }
 }
 
@@ -164,9 +141,11 @@ fn create_port() -> Option<serial::windows::COMPort> {
                     match serial::windows::COMPort::open(port_name) {
                         Ok(mut p) => {
 
-                            p.configure(&SETTINGS).expect("Fatal Error: Couldn't configure COM port settings.");
+                            p.configure(&SETTINGS)
+                                .expect("Failed to configure port!");
 
-                            p.set_timeout(Duration::from_millis(16)).expect("Fatal Error: Couldn't configure COM port settings.");
+                            p.set_timeout(Duration::from_millis(16))
+                                .expect("Failed to configure port timeout!");
 
                             Some(p)
                         }

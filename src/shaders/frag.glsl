@@ -186,6 +186,7 @@ float sdRoundCylinder(vec3 p, vec2 h, float r)
 vec2 sdSimonSays(vec3 p, vec4 lights)
 {
   vec2 base = vec2(sdRoundCylinder(p, vec2(2., .075), .1), MAT_GRAY);
+  base = opU(base, vec2(sdRoundCylinder(p, vec2(.75, .3), 0.025), MAT_WHITE));
 
   float col = MAT_RED;
 
@@ -206,41 +207,34 @@ vec2 sdSimonSays(vec3 p, vec4 lights)
     col = MAT_BLUE + lights.w;
   }
 
-  if (lights.x > 0.)
+
+  if (lights.x > 0. && p.x > 0. && p.z < 0.)
   {
-    if (p.x > 0. && p.z < 0.)
-    {
-      p.y += .05;
-    }
+    p.y += .05;
   }
-  else if (lights.y > 0.)
+  else if (lights.y > 0. && p.x > 0. && p.z > 0.)
   {
-    if (p.x > 0. && p.z > 0.)
-    {
-      p.y += .05;
-    }
+    p.y += .05;
   }
-  else if (lights.z > 0.)
+  else if (lights.z > 0. && p.x < 0. && p.z > 0.)
   {
-    if (p.x < 0. && p.z > 0.)
-    {
-      p.y += .05;
-    }
+    p.y += .05;
   }
-  else if (lights.w > 0.)
+  else if (lights.w > 0. && p.x < 0. && p.z < 0.)
   {
-    if (p.x < 0. && p.z < 0.)
-    {
-      p.y += .05;
-    }
+    p.y += .05;
   }
 
   float b = sdRoundCylinder(p, vec2(1.8, .25), 0.);
   b = opS(b, sdBox(p, vec3(3., 1., .1)));
+  b = opS(b, sdRoundCylinder(p, vec2(1., .5), 0.05));
   b = opS(b, sdBox(p, vec3(.1, 1., 3.))) - .05;
   vec2 buttons = vec2(b, col);
 
-  return opU(base, buttons);
+  base = opU(base, buttons);
+
+
+  return base;
 }
 
 vec2 scenedf(vec3 p)
@@ -602,7 +596,8 @@ void main()
   scenecol = mix(scenecol, SKYWHITE, smoothstep(0., 50., scenemarch.x));
 
   // Postprocessing
-  scenecol = vignette(scenecol, uvv, 1.3, 0.9);
+  scenecol = pow(scenecol, vec3(.75));
+  scenecol = vignette(scenecol, uvv, 1.6, 0.9);
 
   gl_FragColor = vec4(scenecol, 1.0);
 }
