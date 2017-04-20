@@ -1,4 +1,4 @@
-![Cover Image](docs/images/devlog/1.png)
+![Cover Image](docs/images/devlog/2.png)
 
 # Simon Says Touchpad Game
 
