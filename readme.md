@@ -11,8 +11,3 @@ The game is controlled via an Adafruit Flora that communicates with the app via 
 ![Wrist Diagram](docs/images/wrist-diagram.png)
 
 The device has 4 pressure sensitive locations that act as the highlighted regions in Simon Says.
-
-## Credit
-
-- Alain Galvan - Visualizer application
-    - [Github](https://github.com/alaingalvan) | [Twitter](https://twitter.com/alainxyz) | [Website](https://alain.xyz)
